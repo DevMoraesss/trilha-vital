@@ -1,0 +1,31 @@
+# Versão da "gramática" do docker-compose que estamos usando.
+version: '3.8'
+
+# Aqui listamos todos os "músicos" (serviços/contêineres) da nossa orquestra.
+services:
+  # O nome do nosso serviço de banco de dados.
+  db:
+    # A imagem que queremos usar. postgres:15 especifica a versão 15 do PostgreSQL.
+    # Usar uma versão específica é uma boa prática para evitar surpresas no futuro.
+    image: postgres:15
+    # Um nome amigável para o nosso contêiner, para fácil identificação.
+    container_name: trilha_vital_db
+    # Política de reinicialização. 'always' significa que se o contêiner parar por algum motivo,
+    # o Docker tentará reiniciá-lo automaticamente. Ótimo para desenvolvimento.
+    restart: always
+    # As variáveis de ambiente (os segredos) que o contêiner precisa.
+    environment:
+      POSTGRES_USER: trilha_user
+      POSTGRES_PASSWORD: TvDev_P0stgr3s_s3nh4_25 
+      POSTGRES_DB: trilha_db
+    # O mapeamento de portas. Aqui está um detalhe crucial!
+    ports:
+      - "5433:5432"
+    # Onde os dados do banco serão armazenados.
+    volumes:
+      - trilha-vital-data:/var/lib/postgresql/data
+
+# Aqui declaramos os volumes "nomeados". Isso garante que os dados persistam
+# mesmo que a gente remova e recrie o contêiner. Nossos dados estarão seguros.
+volumes:
+  trilha-vital-data:

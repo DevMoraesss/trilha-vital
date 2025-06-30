@@ -1,74 +1,101 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
-export async function POST(req: NextRequest) {
-    try {
-        // 1. Lendo os dados que o frontend enviou.
-        // O 'await request.json()' pega o corpo (body) da requisição.
-        const body = await req.json();
-        const { name, age, weight, height } = body;
+// Arquivo: app/api/profile/route.ts
 
-        // 2. Validação simples dos dados recebidos do servidor.
-        // NUNCA confie nos dados que vêm do frontend. Sempre valide no backend.
-        if (!name || !age || !weight || !height) {
-            return NextResponse.json({ error: 'Todos os campos são obrigatórios.' }, { status: 400 });
-        }
-        
-        // logica de negocio: calcular IMC
-        const weightKg = parseFloat(weight);
-        const heightM = parseFloat(height);
-        if (height <= 0) {
-            return NextResponse.json({ error: 'Altura inválida.' }, { status: 400 });
-        }
-
-        const imc = parseFloat((weightKg / (heightM * heightM)).toFixed(2));
-
-    // 4. Interação com o Banco de Dados com Prisma!
-    // Usaremos 'upsert', uma operação super poderosa do Prisma:
-    // - 'where: { email: 'user@example.com' }': Ele tenta encontrar um usuário com este email.
-    //   (Vamos usar um email fixo por enquanto, já que não temos login).
-    // - 'update: { ... }': Se ele ENCONTRAR o usuário, ele atualiza os dados.
-    // - 'create: { ... }': Se ele NÃO encontrar, ele cria um novo usuário com esses dados.
-    // Isso nos permite criar ou atualizar com uma única operação!
-
-    const updateUser = await prisma.user.upsert({
-        where: { email: 'user@example.com' },
-        update: {
-            name,
-            profile: {
-                update: {
-                    age,
-                    weight,
-                    height,
-                    imc,
-                },
-            }, 
-         },
-        create: {
-            email: 'user@example.com',
-            name,
-            profile: {
-                create: {
-                    age: parseInt(age),
-                    weight: weightKg,
-                    height: heightM,
-                    imc,
-                },
-            },
-        },
-         // 'include' diz ao Prisma para retornar os dados do perfil junto com os do usuário.
-        include: {
-            profile: true,
-        },
+// --- NOVA FUNÇÃO GET ---
+// Esta função lida com requisições GET para buscar dados.
+export async function GET() { // <-- A CORREÇÃO ESTÁ AQUI
+  try {
+    // Por enquanto, buscamos o primeiro usuário que foi criado,
+    // já que só temos um. No futuro, isso usaria o ID do usuário logado.
+    const user = await prisma.user.findUnique({
+      where: { email: 'eu@trilhavital.com' },
+      include: {
+        profile: true,
+      },
     });
-    // 5. Retornar uma resposta de sucesso para o frontend
-    // Enviamos de volta o usuário atualizado com seu perfil e o IMC calculado.
-    return NextResponse.json({ data: updateUser }, { status: 200 });
-    } catch (error) {
-        // Se qualquer coisa der errado, capturamos o erro aqui.
-        console.log(error);
-        return NextResponse.json({ error: 'Erro interno do servidor.' }, { status: 500 });
+
+    // Se nenhum usuário for encontrado com aquele email, retornamos "não encontrado".
+    if (!user) {
+      return NextResponse.json({ message: 'Usuário não encontrado.' }, { status: 404 });
     }
+
+    // Se encontramos, retornamos o usuário com seus dados de perfil.
+    return NextResponse.json(user, { status: 200 });
+  } catch (error) {
+    console.error("Erro ao buscar perfil:", error);
+    return NextResponse.json({ error: 'Erro interno do servidor.' }, { status: 500 });
+  }
+}
+
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    // Os dados chegam do frontend como strings
+    const { name, age, weight, height } = body;
+
+    if (!name || !age || !weight || !height) {
+      return NextResponse.json({ error: 'Todos os campos são obrigatórios.' }, { status: 400 });
+    }
+
+    // --- MUDANÇA IMPORTANTE AQUI ---
+    // Convertemos os valores de string para número ANTES de usá-los.
+    const ageNum = parseInt(age);
+    const weightNum = parseFloat(weight);
+    const heightNum = parseFloat(height);
+
+    if (isNaN(ageNum) || isNaN(weightNum) || isNaN(heightNum) || heightNum <= 0) {
+        return NextResponse.json({ error: 'Valores numéricos inválidos.' }, { status: 400 });
+    }
+
+    const imc = parseFloat((weightNum / (heightNum * heightNum)).toFixed(2));
+
+    const updatedUser = await prisma.user.upsert({
+      // Usamos um email fixo por enquanto. Em um sistema real, viria do login.
+      where: { email: 'eu@trilhavital.com' },
+      update: {
+        name,
+        profile: {
+          update: {
+            // Agora passamos os números convertidos para o Prisma
+            age: ageNum,
+            weight: weightNum,
+            height: heightNum,
+            imc,
+          },
+        },
+      },
+      create: {
+        email: 'eu@trilhavital.com',
+        name,
+        profile: {
+          create: {
+            // E aqui também!
+            age: ageNum,
+            weight: weightNum,
+            height: heightNum,
+            imc,
+          },
+        },
+      },
+      include: {
+        profile: true,
+      },
+    });
+
+    return NextResponse.json(updatedUser, { status: 200 });
+
+  } catch (error) {
+    // Tratamento de erro genérico
+    console.error("Erro ao salvar perfil:", error);
+    if (error instanceof Prisma.PrismaClientValidationError) {
+        return NextResponse.json({ error: 'Erro de validação nos dados enviados.' }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Erro interno do servidor.' }, { status: 500 });
+  }
 }
 
 /**
