@@ -3,6 +3,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from 'react';
+import Link from 'next/link';
 
 // --- DEFININDO TIPOS PARA MELHORAR NOSSO CÓDIGO ---
 // É uma boa prática definir como são nossos objetos.
@@ -117,9 +118,13 @@ export default function HomePage() {
     <main className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
       <div className="w-full max-w-4xl mx-auto bg-gray-800 rounded-2xl shadow-lg p-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
         
-        {/* Coluna do Formulário (sem alterações) */}
         <div className="flex flex-col">
-          <h1 className="text-3xl font-bold text-cyan-400 mb-4">Meu Perfil de Saúde</h1>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-3xl font-bold text-cyan-400">Meu Perfil de Saúde</h1>
+            <Link href="/workouts" className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+              Ver Treinos
+            </Link>
+          </div>
           <p className="text-gray-400 mb-6">Insira seus dados para que possamos te conhecer melhor.</p>
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Campos do formulário */}

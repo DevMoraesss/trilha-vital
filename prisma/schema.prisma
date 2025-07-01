@@ -1,8 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Arquivo: prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -14,20 +10,73 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String?
-  email     String    @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  profile   Profile?
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile  Profile?
+  // Adicionamos o relacionamento: Um usuário pode ter vários treinos.
+  workouts Workout[]
 }
 
 model Profile {
-  id          String    @id @default(cuid())
-  age         Int?
-  weight      Float?
-  height      Float?
-  imc         Float?
-  user        User      @relation(fields: [userId], references: [id])
-  userId      String    @unique
+  id     String @id @default(cuid())
+  age    Int?
+  weight Float?
+  height Float?
+  imc    Float?
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique
+}
+
+// --- NOVOS MODELOS ABAIXO ---
+
+// Modelo para o nosso catálogo de exercícios
+model Exercise {
+  id          String  @id @default(cuid())
+  name        String  @unique // Nome do exercício, ex: "Supino Reto com Barra"
+  description String? // Descrição de como fazer o exercício
+  muscleGroup String // Grupo muscular principal, ex: "Peito"
+  imageUrl    String? // URL para uma imagem ou GIF do exercício
+
+  // Relacionamento: Um exercício pode estar em várias "linhas de treino"
+  workoutExercises WorkoutExercise[]
+}
+
+// Modelo para a ficha de treino
+model Workout {
+  id          String   @id @default(cuid())
+  name        String // Nome do treino, ex: "Treino A - Peito e Tríceps"
+  description String? // Uma descrição geral do treino
+  createdAt   DateTime @default(now())
+
+  // Relacionamento com o usuário
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  // Relacionamento: Uma ficha de treino tem várias "linhas de exercício"
+  workoutExercises WorkoutExercise[]
+}
+
+// Modelo para a "linha" de exercício dentro de uma ficha de treino
+model WorkoutExercise {
+  id          String @id @default(cuid())
+  sets        Int // Número de séries, ex: 4
+  reps        String // Repetições, ex: "8-12"
+  restSeconds Int // Descanso em segundos, ex: 60
+  loadKg      Float? // Carga inicial em KG
+
+  // Relacionamento com a ficha de treino à qual esta linha pertence
+  workout   Workout @relation(fields: [workoutId], references: [id])
+  workoutId String
+
+  // Relacionamento com o exercício do catálogo
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  exerciseId String
+
+  // Garante que a combinação de um treino e um exercício seja única.
+  // Não podemos ter o mesmo exercício duas vezes na mesma ficha de treino.
+  @@unique([workoutId, exerciseId])
 }
